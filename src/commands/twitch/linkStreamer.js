@@ -1,65 +1,94 @@
-const { registerCommand } = require('../commandHandler');
+const BaseCommand = require('../base/BaseCommand');
+const commandRegistry = require('../commandRegistry');
 const StreamerStorage = require('../../services/storage/StreamerStorage');
 const TwitchAPI = require('../../services/twitch/TwitchAPI');
-const { config } = require('../../config/config');
+const { MessageFlags } = require('../../utils/discordConstants');
 
-async function linkStreamerCommand(message, args) {
-  if (!args.length) {
-    const helpMessage = await message.reply(
-      `⚠️ Incorrect usage. Command: \`${config.discord.prefix}linkstreamer <twitch_username>\`\n` +
-      `Example: \`${config.discord.prefix}linkstreamer ninja\`\n` +
-      `Use \`${config.discord.prefix}help linkstreamer\` for more information.`
-    );
-    setTimeout(() => helpMessage.delete().catch(() => {}), 10000);
-    return;
+class LinkStreamerCommand extends BaseCommand {
+  constructor() {
+    super({
+      name: 'linkstreamer',
+      description: 'Links your Discord account to your Twitch username',
+      usage: 'linkstreamer <twitch_username>',
+      example: 'linkstreamer ninja',
+      slashCommandOptions: [
+        {
+          name: 'username',
+          description: 'Your Twitch username',
+          type: 3, // STRING
+          required: true
+        }
+      ]
+    });
   }
 
-  const twitchUsername = args[0];
-  const discordUserId = message.author.id;
+  async executeSlash(interaction) {
+    const twitchUsername = interaction.options.getString('username');
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    
+    try {
+      const user = await TwitchAPI.getUserByUsername(twitchUsername);
+      if (!user) {
+        return interaction.editReply('Could not find that Twitch user.');
+      }
 
-  try {
-    // Check if user is already linked
-    const existingLink = StreamerStorage.getStreamerByDiscordId(discordUserId);
-    if (existingLink) {
-      const errorMessage = await message.reply(
-        `You are already linked to Twitch username: ${existingLink[0]}\n` +
-        `Use \`${config.discord.prefix}unlinkstreamer\` first if you want to link a different account.`
+      const streamers = await StreamerStorage.getStreamers();
+      const streamerExists = streamers.some(([username]) => 
+        username.toLowerCase() === twitchUsername.toLowerCase()
       );
-      setTimeout(() => errorMessage.delete().catch(() => {}), 10000);
-      return;
+
+      if (!streamerExists) {
+        // Add new streamer if not already monitored
+        await StreamerStorage.addStreamer(twitchUsername, interaction.channel.id, interaction.user.id);
+      } else {
+        // If streamer exists, just link the Discord user
+        await StreamerStorage.linkDiscordUser(twitchUsername, interaction.user.id);
+      }
+
+      return interaction.editReply(`Successfully linked your Discord account to Twitch username: ${twitchUsername}`);
+    } catch (error) {
+      console.error('Error linking streamer:', error);
+      return interaction.editReply('There was an error linking your Twitch account. Please try again later.');
+    }
+  }
+
+  async executePrefix(message, args) {
+    const twitchUsername = args[0];
+    
+    if (!twitchUsername) {
+      return message.reply('Please provide a Twitch username to link.');
     }
 
-    // Verify the Twitch user exists
-    const user = await TwitchAPI.getUserByUsername(twitchUsername);
-    if (!user) {
-      const errorMessage = await message.reply(
-        `Could not find Twitch user: ${twitchUsername}\n` +
-        `Please verify the username and try again.`
+    const statusMsg = await message.reply('Checking Twitch username...');
+
+    try {
+      const user = await TwitchAPI.getUserByUsername(twitchUsername);
+      if (!user) {
+        return statusMsg.edit('Could not find that Twitch user. Please check the username and try again.');
+      }
+
+      const streamers = await StreamerStorage.getStreamers();
+      const streamerExists = streamers.some(([username]) => 
+        username.toLowerCase() === twitchUsername.toLowerCase()
       );
-      setTimeout(() => errorMessage.delete().catch(() => {}), 10000);
-      return;
-    }
 
-    // Check if streamer exists in our system
-    const streamers = StreamerStorage.getStreamers();
-    const existingStreamer = streamers.find(([username]) => username.toLowerCase() === twitchUsername.toLowerCase());
+      if (!streamerExists) {
+        // Add new streamer if not already monitored
+        await StreamerStorage.addStreamer(twitchUsername, message.channel.id, message.author.id);
+      } else {
+        // If streamer exists, just link the Discord user
+        await StreamerStorage.linkDiscordUser(twitchUsername, message.author.id);
+      }
 
-    if (existingStreamer) {
-      // Link existing streamer
-      await StreamerStorage.linkDiscordUser(twitchUsername, discordUserId);
-      return message.reply(`Successfully linked your Discord account to Twitch username: ${twitchUsername}`);
-    } else {
-      // Add new streamer and link
-      await StreamerStorage.addStreamer(twitchUsername, message.channel.id, discordUserId);
-      return message.reply(`Successfully added and linked your Discord account to Twitch username: ${twitchUsername}`);
+      await statusMsg.edit(`Successfully linked your Discord account to Twitch user: ${twitchUsername}`);
+    } catch (error) {
+      console.error('Error linking streamer:', error);
+      await statusMsg.edit('There was an error linking your Twitch account. Please try again later.');
     }
-  } catch (error) {
-    console.error('Error linking streamer:', error);
-    const errorMessage = await message.reply(
-      'There was an error linking your Twitch account. Please try again later.'
-    );
-    setTimeout(() => errorMessage.delete().catch(() => {}), 10000);
   }
 }
 
-registerCommand('linkstreamer', linkStreamerCommand);
+const linkStreamerCommand = new LinkStreamerCommand();
+commandRegistry.registerCommand(linkStreamerCommand);
+
+module.exports = linkStreamerCommand;

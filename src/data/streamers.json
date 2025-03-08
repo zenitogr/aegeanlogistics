@@ -1,1 +1,20 @@
-[]
+[
+  [
+    "zenitogr",
+    {
+      "channelId": "1347889142171959386",
+      "discordUserId": "1150865381666340944",
+      "isLive": true,
+      "lastCheck": 1741442232434
+    }
+  ],
+  [
+    "nikosr6",
+    {
+      "channelId": "1347889142171959386",
+      "discordUserId": null,
+      "isLive": false,
+      "lastCheck": 1741442232643
+    }
+  ]
+]

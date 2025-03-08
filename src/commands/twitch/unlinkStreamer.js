@@ -1,22 +1,52 @@
-const { registerCommand } = require('../commandHandler');
+const BaseCommand = require('../base/BaseCommand');
+const commandRegistry = require('../commandRegistry');
 const StreamerStorage = require('../../services/storage/StreamerStorage');
+const { MessageFlags } = require('../../utils/discordConstants');
 
-async function unlinkStreamerCommand(message) {
-  const discordUserId = message.author.id;
+class UnlinkStreamerCommand extends BaseCommand {
+  constructor() {
+    super({
+      name: 'unlinkstreamer',
+      description: 'Unlinks your Discord account from your Twitch username',
+      usage: 'unlinkstreamer',
+      example: 'unlinkstreamer'
+    });
+  }
 
-  try {
-    const existingLink = StreamerStorage.getStreamerByDiscordId(discordUserId);
-    if (!existingLink) {
-      return message.reply('You don\'t have any linked Twitch account.');
+  async executeSlash(interaction) {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    
+    try {
+      const unlinked = await StreamerStorage.unlinkDiscordUser(interaction.user.id);
+      
+      if (unlinked) {
+        return interaction.editReply('Successfully unlinked your Discord account from your Twitch account.');
+      } else {
+        return interaction.editReply('No linked Twitch account found for your Discord account.');
+      }
+    } catch (error) {
+      console.error('Error unlinking streamer:', error);
+      return interaction.editReply('There was an error unlinking your Twitch account. Please try again later.');
     }
+  }
 
-    const [twitchUsername] = existingLink;
-    await StreamerStorage.unlinkDiscordUser(twitchUsername);
-    return message.reply(`Successfully unlinked your Discord account from Twitch username: ${twitchUsername}`);
-  } catch (error) {
-    console.error('Error unlinking streamer:', error);
-    return message.reply('There was an error unlinking your Twitch account.');
+  async executePrefix(message) {
+    try {
+      const unlinked = await StreamerStorage.unlinkDiscordUser(message.author.id);
+      
+      if (unlinked) {
+        return message.reply('Successfully unlinked your Discord account from your Twitch account.');
+      } else {
+        return message.reply('No linked Twitch account found for your Discord account.');
+      }
+    } catch (error) {
+      console.error('Error unlinking streamer:', error);
+      return message.reply('There was an error unlinking your Twitch account. Please try again later.');
+    }
   }
 }
 
-registerCommand('unlinkstreamer', unlinkStreamerCommand);
+const unlinkStreamerCommand = new UnlinkStreamerCommand();
+commandRegistry.registerCommand(unlinkStreamerCommand);
+
+module.exports = unlinkStreamerCommand;

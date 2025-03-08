@@ -1,6 +1,10 @@
 {
   "watch": ["src"],
   "ext": ".js,.json",
-  "ignore": ["*.test.js", "node_modules/"],
+  "ignore": [
+    "*.test.js",
+    "node_modules/",
+    "src/data/*"
+  ],
   "exec": "node -r dotenv/config"
 }
