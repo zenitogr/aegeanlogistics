@@ -1,0 +1,4 @@
+this is a simple discord bot for the Aegean Logistics Company Discord server for a greek gaming community that mainly plays euro truck simulator 2 and the main functionality is notifying the users when members stream on Twitch
+pnpm
+discord.js
+IMPORTANT: I want full organization and simple small files per functionality, please always disect all files that are getting big, as we can import another file so each functionality should be in its own file, like a command or function, or class etc
