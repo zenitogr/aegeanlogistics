@@ -22,4 +22,5 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
-/src/data/**
+settings.json
+streamers.json
