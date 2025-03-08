@@ -3,6 +3,7 @@ const { config } = require('./config/config');
 const { loadEvents } = require('./events/eventLoader');
 const { loadCommands } = require('./commands/commandLoader');
 const TwitchNotifier = require('./services/twitch/TwitchNotifier');
+const { ensureDirectories } = require('./utils/ensureDirectories');
 
 const client = new Client({
   disableEveryone: false,
@@ -20,6 +21,9 @@ client.once('ready', async () => {
   console.log(`[Bot] Logged in as ${client.user.tag}`);
   
   try {
+    // Ensure required directories exist
+    await ensureDirectories();
+    
     // Load commands
     console.log('[Bot] Loading commands...');
     await loadCommands();
