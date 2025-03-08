@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const config = {
   discord: {
-    token: process.env.DISCORD_TOKEN,
+    token: process.env.DISCORD_BOT_TOKEN,
     prefix: process.env.DISCORD_PREFIX || '!',
     clientId: process.env.DISCORD_CLIENT_ID,
   },
